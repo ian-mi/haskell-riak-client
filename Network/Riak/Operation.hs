@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
-module Network.Riak.Operation (Operation, pingOp, fetchOp, putOp, putOp_) where
+module Network.Riak.Operation (pingOp, fetchOp, putOp, putOp_) where
 
 import Network.Riak.Message
+import Network.Riak.Monad
 import Network.Riak.Request
 import Network.Riak.Response
 import Network.Riak.Types
@@ -12,17 +13,15 @@ import Data.ByteString
 import Data.Conduit
 import Data.Time
 
-type Operation m a = Sink Message m () -> ResumableSource m Message -> m (ResumableSource m Message, a)
+makeRequest :: Monad m => Message -> Sink Message m a -> Riak m a
+makeRequest req getRsp = Riak $ \up down -> do yield req $$ up
+                                               down $$++ getRsp
 
-performSimpleOperation :: Monad m => Message -> Sink Message m a -> Operation m a
-performSimpleOperation req get up down = do yield req $$ up
-                                            down $$++ get
+pingOp :: MonadThrow m => Riak m ()
+pingOp = makeRequest PingRequest (getResponse pingResponse)
 
-pingOp :: MonadThrow m => Operation m ()
-pingOp = performSimpleOperation PingRequest (getResponse pingResponse)
-
-fetchOp :: MonadThrow m => Bucket -> Key -> Operation m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-fetchOp (Bucket b) (Key k) = performSimpleOperation req (getResponse fetchResponse)
+fetchOp :: MonadThrow m => Bucket -> Key -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
+fetchOp (Bucket b) (Key k) = makeRequest req (getResponse fetchResponse)
   where req = GetRequest { getBucket = b
                          , getKey = k
                          , r = Nothing
@@ -33,10 +32,10 @@ fetchOp (Bucket b) (Key k) = performSimpleOperation req (getResponse fetchRespon
                          , getHead = Nothing
                          , deleted_vclock = Nothing }
 
-putOp :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Operation m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-putOp vclock bucketType bucket key value metadata = performSimpleOperation req (getResponse putResponse)
+putOp :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
+putOp vclock bucketType bucket key value metadata = makeRequest req (getResponse putResponse)
   where req = putRequest (ReturnBody True) vclock bucketType bucket key value metadata
 
-putOp_ :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Operation m ()
-putOp_ vclock bucketType bucket key value metadata = performSimpleOperation req (void (getResponse putResponse))
+putOp_ :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ()
+putOp_ vclock bucketType bucket key value metadata = makeRequest req (void (getResponse putResponse))
   where req = putRequest (ReturnBody False) vclock bucketType bucket key value metadata
