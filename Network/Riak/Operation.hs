@@ -30,7 +30,11 @@ fetchOp (Bucket b) (Key k) = makeRequest req (getResponse fetchResponse)
                          , notfound_ok = Nothing
                          , if_modified = Nothing
                          , getHead = Nothing
-                         , deleted_vclock = Nothing }
+                         , deleted_vclock = Nothing
+                         , getTimeout = Nothing
+                         , getSloppyQuorom = Nothing
+                         , n_val = Nothing
+                         , getBucketType = Nothing }
 
 putOp :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
 putOp vclock bucketType bucket key value metadata = makeRequest req (getResponse putResponse)

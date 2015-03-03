@@ -28,7 +28,11 @@ data RpbGetReq = RpbGetReq { getBucket :: Required 1 (Value ByteString)
                            , notfound_ok :: Optional 6 (Value Bool)
                            , if_modified :: Optional 7 (Value ByteString)
                            , getHead :: Optional 8 (Value Bool)
-                           , deleted_vclock :: Optional 9 (Value Bool)} deriving Generic
+                           , deleted_vclock :: Optional 9 (Value Bool)
+                           , getTimeout :: Optional 10 (Value Word32)
+                           , getSloppyQuorom :: Optional 11 (Value Bool)
+                           , n_val :: Optional 12 (Value Word32)
+                           , getBucketType :: Optional 13 (Value ByteString) } deriving Generic
 instance Encode RpbGetReq
 instance Decode RpbGetReq
 
@@ -49,11 +53,11 @@ data RpbPutReq = RpbPutReq { putBucket :: Required 1 (Value ByteString)
                            , if_not_modified :: Optional 9 (Value Bool)
                            , if_none_match :: Optional 10 (Value Bool)
                            , return_head :: Optional 11 (Value Bool)
-                           , timeout :: Optional 12 (Value Word32)
+                           , putTimeout :: Optional 12 (Value Word32)
                            , asis :: Optional 13 (Value Word32)
-                           , sloppy_quorom :: Optional 14 (Value Bool)
+                           , putSloppyQuorom :: Optional 14 (Value Bool)
                            , nval :: Optional 15 (Value Word32)
-                           , bucket_type :: Optional 16 (Value ByteString) } deriving Generic
+                           , putBucketType :: Optional 16 (Value ByteString) } deriving Generic
 instance Encode RpbPutReq
 instance Decode RpbPutReq
 

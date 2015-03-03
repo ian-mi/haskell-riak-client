@@ -30,7 +30,11 @@ data Message =
                , notfound_ok :: Maybe Bool
                , if_modified :: Maybe BS.ByteString
                , getHead :: Maybe Bool
-               , deleted_vclock :: Maybe Bool }
+               , deleted_vclock :: Maybe Bool
+               , getTimeout :: Maybe Int
+               , getSloppyQuorom :: Maybe Bool
+               , n_val :: Maybe Int
+               , getBucketType :: Maybe BS.ByteString }
   | GetResponse { getContent :: [Content]
                 , getVclock :: Maybe BS.ByteString
                 , unchanged :: Maybe Bool }
@@ -45,11 +49,11 @@ data Message =
                , if_not_modified :: Maybe Bool
                , if_none_match :: Maybe Bool
                , return_head :: Maybe Bool
-               , timeout :: Maybe Int
+               , putTimeout :: Maybe Int
                , asis :: Maybe Int
-               , sloppy_quorom :: Maybe Bool
+               , putSloppyQuorom :: Maybe Bool
                , nval :: Maybe Int
-               , bucket_type :: Maybe BS.ByteString }
+               , putBucketType :: Maybe BS.ByteString }
   | PutResponse { putRespContents :: [Content]
                 , putRespVclock :: Maybe BS.ByteString
                 , putRespKey :: Maybe BS.ByteString } deriving Show
@@ -112,7 +116,7 @@ decodePingResponse :: RpbPingResp -> Message
 decodePingResponse = const PingResponse
 
 decodeGetRequest :: RpbGetReq -> Message
-decodeGetRequest (RpbGetReq {getBucket, getKey, r, pr, basic_quorom, notfound_ok, if_modified, getHead, deleted_vclock}) = 
+decodeGetRequest RpbGetReq {..} = 
   GetRequest { getBucket = PB.getField getBucket
              , getKey = PB.getField getKey
              , r = fmap fromIntegral (PB.getField r)
@@ -121,7 +125,11 @@ decodeGetRequest (RpbGetReq {getBucket, getKey, r, pr, basic_quorom, notfound_ok
              , notfound_ok = PB.getField notfound_ok
              , if_modified = PB.getField if_modified
              , getHead = PB.getField getHead
-             , deleted_vclock = PB.getField deleted_vclock }
+             , deleted_vclock = PB.getField deleted_vclock
+             , getTimeout = fmap fromIntegral (PB.getField getTimeout)
+             , getSloppyQuorom = PB.getField getSloppyQuorom
+             , n_val = fmap fromIntegral (PB.getField n_val)
+             , getBucketType = PB.getField getBucketType }
 
 decodeGetResponse :: RpbGetResp -> Message
 decodeGetResponse RpbGetResp { getContent, getVclock, unchanged } =
@@ -139,11 +147,11 @@ decodePutRequest RpbPutReq {..} = PutRequest { putBucket = PB.getField putBucket
                                              , if_not_modified = PB.getField if_not_modified
                                              , if_none_match = PB.getField if_none_match
                                              , return_head = PB.getField return_head
-                                             , timeout = fmap fromIntegral (PB.getField timeout)
+                                             , putTimeout = fmap fromIntegral (PB.getField putTimeout)
                                              , asis = fmap fromIntegral (PB.getField asis)
-                                             , sloppy_quorom = PB.getField sloppy_quorom
+                                             , putSloppyQuorom = PB.getField putSloppyQuorom
                                              , nval = fmap fromIntegral (PB.getField nval)
-                                             , bucket_type = PB.getField bucket_type }
+                                             , putBucketType = PB.getField putBucketType }
 
 decodePutResponse :: RpbPutResp -> Message
 decodePutResponse RpbPutResp {..} = PutResponse { putRespContents = fmap decodeContent (PB.getField putRespContents)
@@ -187,16 +195,19 @@ encoder ErrorResponse { errmsg, errcode } =
                                            , errcode = PB.putField (fromIntegral errcode) })
 encoder PingRequest = (PingRequestCode, Encoder RpbPingReq)
 encoder PingResponse = (PingResponseCode, Encoder RpbPingResp)
-encoder (GetRequest {getBucket, getKey, r, pr, basic_quorom, notfound_ok, if_modified, getHead, deleted_vclock}) = 
-  (GetRequestCode, Encoder RpbGetReq { getBucket = PB.putField getBucket
-                                     , getKey = PB.putField getKey
-                                     , r = PB.putField (fmap fromIntegral r)
-                                     , pr = PB.putField (fmap fromIntegral pr)
-                                     , basic_quorom = PB.putField basic_quorom
-                                     , notfound_ok = PB.putField notfound_ok
-                                     , if_modified = PB.putField if_modified
-                                     , getHead = PB.putField getHead
-                                     , deleted_vclock = PB.putField deleted_vclock })
+encoder GetRequest {..} = (GetRequestCode, Encoder RpbGetReq { getBucket = PB.putField getBucket
+                                                             , getKey = PB.putField getKey
+                                                             , r = PB.putField (fmap fromIntegral r)
+                                                             , pr = PB.putField (fmap fromIntegral pr)
+                                                             , basic_quorom = PB.putField basic_quorom
+                                                             , notfound_ok = PB.putField notfound_ok
+                                                             , if_modified = PB.putField if_modified
+                                                             , getHead = PB.putField getHead
+                                                             , deleted_vclock = PB.putField deleted_vclock
+                                                             , getTimeout = PB.putField (fmap fromIntegral getTimeout)
+                                                             , getSloppyQuorom = PB.putField getSloppyQuorom
+                                                             , n_val = PB.putField (fmap fromIntegral n_val)
+                                                             , getBucketType = PB.putField getBucketType })
 encoder (GetResponse { getContent, getVclock, unchanged }) = 
   (GetResponseCode, Encoder RpbGetResp { getContent = PB.putField (fmap encodeContent getContent)
                                        , getVclock = PB.putField getVclock
@@ -212,11 +223,11 @@ encoder (PutRequest {..}) = (PutRequestCode, Encoder RpbPutReq { putBucket = PB.
                                                                , if_not_modified = PB.putField if_not_modified
                                                                , if_none_match = PB.putField if_none_match
                                                                , return_head = PB.putField return_head
-                                                               , timeout = PB.putField (fmap fromIntegral timeout)
+                                                               , putTimeout = PB.putField (fmap fromIntegral putTimeout)
                                                                , asis = PB.putField (fmap fromIntegral asis)
-                                                               , sloppy_quorom = PB.putField sloppy_quorom
+                                                               , putSloppyQuorom = PB.putField putSloppyQuorom
                                                                , nval = PB.putField (fmap fromIntegral nval)
-                                                               , bucket_type = PB.putField bucket_type })
+                                                               , putBucketType = PB.putField putBucketType })
 encoder (PutResponse {..}) = (PutResponseCode, Encoder RpbPutResp { putRespContents = PB.putField (fmap encodeContent putRespContents)
                                                                   , putRespVclock = PB.putField putRespVclock
                                                                   , putRespKey = PB.putField putRespKey })

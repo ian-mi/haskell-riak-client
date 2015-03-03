@@ -21,11 +21,11 @@ putRequest ReturnBody{..} VClock{..} bucketType Bucket{..} Key{..} value metadat
              , if_not_modified = Nothing
              , if_none_match = Nothing
              , return_head = Nothing
-             , timeout = Nothing
+             , putTimeout = Nothing
              , asis = Nothing
-             , sloppy_quorom = Nothing
+             , putSloppyQuorom = Nothing
              , nval = Nothing
-             , bucket_type = encodeBucketType bucketType }
+             , putBucketType = encodeBucketType bucketType }
 
 encodeBucketType :: BucketType -> Maybe ByteString
 encodeBucketType Default = Nothing
