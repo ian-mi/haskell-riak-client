@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
-module Network.Riak.Operation (pingOp, fetchOp, putOp, putOp_) where
+module Network.Riak.Operation (ping, fetch, put, put_) where
 
+import Network.Riak.KV
 import Network.Riak.Message
 import Network.Riak.Monad
 import Network.Riak.Request
@@ -17,17 +18,18 @@ makeRequest :: Monad m => Message -> Sink Message m a -> Riak m a
 makeRequest req getRsp = Riak $ \up down -> do yield req $$ up
                                                down $$++ getRsp
 
-pingOp :: MonadThrow m => Riak m ()
-pingOp = makeRequest PingRequest (getResponse pingResponse)
+ping :: MonadThrow m => Riak m ()
+ping = makeRequest PingRequest (getResponse pingResponse)
 
-fetchOp :: MonadThrow m => Bucket -> Key -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-fetchOp bucket key = makeRequest req (getResponse fetchResponse)
-  where req = getRequest Default bucket key
+fetch :: MonadThrow m => KV m [(ByteString, Metadata, Maybe UTCTime)]
+fetch = KV $ \bucketType bucket key _ -> makeRequest (getRequest bucketType bucket key) (getResponse fetchResponse)
 
-putOp :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-putOp vclock bucketType bucket key value metadata = makeRequest req (getResponse putResponse)
-  where req = putRequest (ReturnBody True) vclock bucketType bucket key value metadata
+put :: MonadThrow m => ByteString -> Metadata -> KV m [(ByteString, Metadata, Maybe UTCTime)]
+put value metadata = KV $ \bucketType bucket key vclock -> 
+                            makeRequest (putRequest (ReturnBody True) vclock bucketType bucket key value metadata)
+                                        (getResponse putResponse)
 
-putOp_ :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ()
-putOp_ vclock bucketType bucket key value metadata = makeRequest req (void (getResponse putResponse))
-  where req = putRequest (ReturnBody False) vclock bucketType bucket key value metadata
+put_ :: MonadThrow m => ByteString -> Metadata -> KV m ()
+put_ value metadata = void $ KV $ \bucketType bucket key vclock -> 
+                             makeRequest (putRequest (ReturnBody False) vclock bucketType bucket key value metadata) 
+                                         (getResponse putResponse)

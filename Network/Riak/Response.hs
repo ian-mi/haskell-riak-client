@@ -31,13 +31,13 @@ pingResponse :: MonadThrow m => Message -> m ()
 pingResponse PingResponse = return ()
 pingResponse m = throwM (UnexpectedResponse m)
 
-fetchResponse :: MonadThrow m => Message -> m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-fetchResponse GetResponse { getContent, getVclock } = return (fmap decodeContent getContent, VClock getVclock)
+fetchResponse :: MonadThrow m => Message -> m (VClock, [(ByteString, Metadata, Maybe UTCTime)])
+fetchResponse GetResponse { getContent, getVclock } = return (VClock getVclock, fmap decodeContent getContent)
 fetchResponse ErrorResponse { errmsg, errcode } = throwM (RiakError { errMsg = errmsg, errCode = errcode })
 fetchResponse m = throwM (UnexpectedResponse m)
 
-putResponse :: MonadThrow m => Message -> m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-putResponse PutResponse { putRespContents, putRespVclock } = return (fmap decodeContent putRespContents, VClock putRespVclock)
+putResponse :: MonadThrow m => Message -> m (VClock, [(ByteString, Metadata, Maybe UTCTime)])
+putResponse PutResponse { putRespContents, putRespVclock } = return (VClock putRespVclock, fmap decodeContent putRespContents)
 putResponse ErrorResponse { errmsg, errcode } = throwM (RiakError { errMsg = errmsg, errCode = errcode })
 putResponse m = throwM (UnexpectedResponse m)
 
