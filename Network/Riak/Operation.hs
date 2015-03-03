@@ -21,20 +21,8 @@ pingOp :: MonadThrow m => Riak m ()
 pingOp = makeRequest PingRequest (getResponse pingResponse)
 
 fetchOp :: MonadThrow m => Bucket -> Key -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
-fetchOp (Bucket b) (Key k) = makeRequest req (getResponse fetchResponse)
-  where req = GetRequest { getBucket = b
-                         , getKey = k
-                         , r = Nothing
-                         , pr = Nothing
-                         , basic_quorom = Nothing
-                         , notfound_ok = Nothing
-                         , if_modified = Nothing
-                         , getHead = Nothing
-                         , deleted_vclock = Nothing
-                         , getTimeout = Nothing
-                         , getSloppyQuorom = Nothing
-                         , n_val = Nothing
-                         , getBucketType = Nothing }
+fetchOp bucket key = makeRequest req (getResponse fetchResponse)
+  where req = getRequest Default bucket key
 
 putOp :: MonadThrow m => VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Riak m ([(ByteString, Metadata, Maybe UTCTime)], VClock)
 putOp vclock bucketType bucket key value metadata = makeRequest req (getResponse putResponse)

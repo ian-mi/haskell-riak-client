@@ -8,6 +8,21 @@ import Data.ByteString
 
 newtype ReturnBody = ReturnBody {returnBody :: Bool}
 
+getRequest :: BucketType -> Bucket -> Key -> Message
+getRequest bucketType Bucket{..} Key{..} = GetRequest { getBucket = bucket
+                                                      , getKey = key
+                                                      , r = Nothing
+                                                      , pr = Nothing
+                                                      , basic_quorom = Nothing
+                                                      , notfound_ok = Nothing
+                                                      , if_modified = Nothing
+                                                      , getHead = Nothing
+                                                      , deleted_vclock = Nothing
+                                                      , getTimeout = Nothing
+                                                      , getSloppyQuorom = Nothing
+                                                      , n_val = Nothing
+                                                      , getBucketType = encodeBucketType bucketType }
+
 putRequest :: ReturnBody -> VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Message
 putRequest ReturnBody{..} VClock{..} bucketType Bucket{..} Key{..} value metadata =
   PutRequest { putBucket = bucket
