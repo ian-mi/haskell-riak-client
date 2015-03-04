@@ -103,8 +103,8 @@ decoder PingRequestCode = Decoder decodePingRequest
 decoder PingResponseCode = Decoder decodePingResponse
 decoder GetRequestCode = Decoder decodeGetRequest
 decoder GetResponseCode = Decoder decodeGetResponse
-decode PutRequestCode = Decoder decodePutRequest
-decode PutResponseCode = Decoder decodePutResponse
+decoder PutRequestCode = Decoder decodePutRequest
+decoder PutResponseCode = Decoder decodePutResponse
 
 decodeErrorResponse :: RpbErrorResp -> Message
 decodeErrorResponse RpbErrorResp { errmsg, errcode } = ErrorResponse { errmsg = PB.getField errmsg, errcode = fromIntegral (PB.getField errcode) }
