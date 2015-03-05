@@ -22,8 +22,8 @@ instance Decode RpbPingResp
 
 data RpbGetReq = RpbGetReq { getBucket :: Required 1 (Value ByteString)
                            , getKey :: Required 2 (Value ByteString)
-                           , r :: Optional 3 (Value Word32)
-                           , pr :: Optional 4 (Value Word32)
+                           , getR :: Optional 3 (Value Word32)
+                           , getPR :: Optional 4 (Value Word32)
                            , basic_quorom :: Optional 5 (Value Bool)
                            , notfound_ok :: Optional 6 (Value Bool)
                            , if_modified :: Optional 7 (Value ByteString)
@@ -46,17 +46,17 @@ data RpbPutReq = RpbPutReq { putBucket :: Required 1 (Value ByteString)
                            , putKey :: Optional 2 (Value ByteString)
                            , putVclock :: Optional 3 (Value ByteString)
                            , putContent :: Required 4 (Message RpbContent)
-                           , w :: Optional 5 (Value Word32)
-                           , dw :: Optional 6 (Value Word32)
+                           , putW :: Optional 5 (Value Word32)
+                           , putDW :: Optional 6 (Value Word32)
                            , return_body :: Optional 7 (Value Bool)
-                           , pw :: Optional 8 (Value Word32)
+                           , putPW :: Optional 8 (Value Word32)
                            , if_not_modified :: Optional 9 (Value Bool)
                            , if_none_match :: Optional 10 (Value Bool)
                            , return_head :: Optional 11 (Value Bool)
                            , putTimeout :: Optional 12 (Value Word32)
                            , asis :: Optional 13 (Value Word32)
                            , putSloppyQuorom :: Optional 14 (Value Bool)
-                           , nval :: Optional 15 (Value Word32)
+                           , putNVal :: Optional 15 (Value Word32)
                            , putBucketType :: Optional 16 (Value ByteString) } deriving Generic
 instance Encode RpbPutReq
 instance Decode RpbPutReq
@@ -66,6 +66,28 @@ data RpbPutResp = RpbPutResp { putRespContents :: Repeated 1 (Message RpbContent
                              , putRespKey :: Optional 3 (Value ByteString) } deriving Generic
 instance Encode RpbPutResp
 instance Decode RpbPutResp
+
+data RpbDelReq = RpbDelReq { delBucket :: Required 1 (Value ByteString)
+                           , delKey :: Required 2 (Value ByteString)
+                           , rw :: Optional 3 (Value Word32)
+                           , delVclock :: Optional 4 (Value ByteString)
+                           , delR :: Optional 5 (Value Word32)
+                           , delW :: Optional 6 (Value Word32)
+                           , delPR :: Optional 7 (Value Word32)
+                           , delPW :: Optional 8 (Value Word32)
+                           , delDW :: Optional 9 (Value Word32)
+                           , delTimeout :: Optional 10 (Value Word32)
+                           , delSloppyQuorom :: Optional 11 (Value Bool)
+                           , delNVal :: Optional 12 (Value Word32)
+                           , delBucketType :: Optional 13 (Value ByteString) } deriving Generic
+
+instance Encode RpbDelReq
+instance Decode RpbDelReq
+
+data RpbDelResp = RpbDelResp deriving Generic
+
+instance Encode RpbDelResp
+instance Decode RpbDelResp
 
 data RpbContent = RpbContent { value :: Required 1 (Value ByteString)
                              , content_type :: Optional 2 (Value ByteString)

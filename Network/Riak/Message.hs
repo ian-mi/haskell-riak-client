@@ -24,8 +24,8 @@ data Message =
   | PingResponse
   | GetRequest { getBucket :: BS.ByteString
                , getKey :: BS.ByteString
-               , r :: Maybe Int
-               , pr :: Maybe Int
+               , getR :: Maybe Int
+               , getPR :: Maybe Int
                , basic_quorom :: Maybe Bool
                , notfound_ok :: Maybe Bool
                , if_modified :: Maybe BS.ByteString
@@ -42,21 +42,35 @@ data Message =
                , putKey :: Maybe BS.ByteString
                , putVclock :: Maybe BS.ByteString
                , putContent :: Content
-               , w :: Maybe Int
-               , dw :: Maybe Int
+               , putW :: Maybe Int
+               , putDW :: Maybe Int
                , return_body :: Maybe Bool
-               , pw :: Maybe Int
+               , putPW :: Maybe Int
                , if_not_modified :: Maybe Bool
                , if_none_match :: Maybe Bool
                , return_head :: Maybe Bool
                , putTimeout :: Maybe Int
                , asis :: Maybe Int
                , putSloppyQuorom :: Maybe Bool
-               , nval :: Maybe Int
+               , putNVal :: Maybe Int
                , putBucketType :: Maybe BS.ByteString }
   | PutResponse { putRespContents :: [Content]
                 , putRespVclock :: Maybe BS.ByteString
-                , putRespKey :: Maybe BS.ByteString } deriving Show
+                , putRespKey :: Maybe BS.ByteString }
+  | DeleteRequest { delBucket :: BS.ByteString
+                  , delKey :: BS.ByteString
+                  , rw :: Maybe Int
+                  , delVclock :: Maybe BS.ByteString
+                  , delR :: Maybe Int
+                  , delW :: Maybe Int
+                  , delPR :: Maybe Int
+                  , delPW :: Maybe Int
+                  , delDW :: Maybe Int
+                  , delTimeout :: Maybe Int
+                  , delSloppyQuorom :: Maybe Bool
+                  , delNVal :: Maybe Int
+                  , delBucketType :: Maybe BS.ByteString }
+  |  DeleteResponse deriving Show
 
 data Content = Content { value :: BS.ByteString
                        , content_type :: Maybe BS.ByteString
@@ -105,6 +119,8 @@ decoder GetRequestCode = Decoder decodeGetRequest
 decoder GetResponseCode = Decoder decodeGetResponse
 decoder PutRequestCode = Decoder decodePutRequest
 decoder PutResponseCode = Decoder decodePutResponse
+decoder DeleteRequestCode = Decoder decodeDeleteRequest
+decoder DeleteResponseCode = Decoder decodeDeleteResponse
 
 decodeErrorResponse :: RpbErrorResp -> Message
 decodeErrorResponse RpbErrorResp { errmsg, errcode } = ErrorResponse { errmsg = PB.getField errmsg, errcode = fromIntegral (PB.getField errcode) }
@@ -119,8 +135,8 @@ decodeGetRequest :: RpbGetReq -> Message
 decodeGetRequest RpbGetReq {..} = 
   GetRequest { getBucket = PB.getField getBucket
              , getKey = PB.getField getKey
-             , r = fmap fromIntegral (PB.getField r)
-             , pr = fmap fromIntegral (PB.getField pr)
+             , getR = fmap fromIntegral (PB.getField getR)
+             , getPR = fmap fromIntegral (PB.getField getPR)
              , basic_quorom = PB.getField basic_quorom
              , notfound_ok = PB.getField notfound_ok
              , if_modified = PB.getField if_modified
@@ -140,23 +156,41 @@ decodePutRequest RpbPutReq {..} = PutRequest { putBucket = PB.getField putBucket
                                              , putKey = PB.getField putKey
                                              , putVclock = PB.getField putVclock
                                              , putContent = decodeContent (PB.getField putContent)
-                                             , w = fmap fromIntegral (PB.getField w)
-                                             , dw = fmap fromIntegral (PB.getField pw)
+                                             , putW = fmap fromIntegral (PB.getField putW)
+                                             , putDW = fmap fromIntegral (PB.getField putDW)
                                              , return_body = PB.getField return_body
-                                             , pw = fmap fromIntegral (PB.getField pw)
+                                             , putPW = fmap fromIntegral (PB.getField putPW)
                                              , if_not_modified = PB.getField if_not_modified
                                              , if_none_match = PB.getField if_none_match
                                              , return_head = PB.getField return_head
                                              , putTimeout = fmap fromIntegral (PB.getField putTimeout)
                                              , asis = fmap fromIntegral (PB.getField asis)
                                              , putSloppyQuorom = PB.getField putSloppyQuorom
-                                             , nval = fmap fromIntegral (PB.getField nval)
+                                             , putNVal = fmap fromIntegral (PB.getField putNVal)
                                              , putBucketType = PB.getField putBucketType }
 
 decodePutResponse :: RpbPutResp -> Message
 decodePutResponse RpbPutResp {..} = PutResponse { putRespContents = fmap decodeContent (PB.getField putRespContents)
                                                 , putRespVclock = PB.getField putRespVclock
                                                 , putRespKey = PB.getField putRespKey }
+
+decodeDeleteRequest :: RpbDelReq -> Message
+decodeDeleteRequest RpbDelReq {..} = DeleteRequest { delBucket = PB.getField delBucket
+                                                   , delKey = PB.getField delKey
+                                                   , rw = fmap fromIntegral (PB.getField rw)
+                                                   , delVclock = PB.getField delVclock
+                                                   , delR = fmap fromIntegral (PB.getField delR)
+                                                   , delW = fmap fromIntegral (PB.getField delW)
+                                                   , delPR = fmap fromIntegral (PB.getField delPR)
+                                                   , delPW = fmap fromIntegral (PB.getField delPW)
+                                                   , delDW = fmap fromIntegral (PB.getField delDW)
+                                                   , delTimeout = fmap fromIntegral (PB.getField delTimeout)
+                                                   , delSloppyQuorom = PB.getField delSloppyQuorom
+                                                   , delNVal = fmap fromIntegral (PB.getField delNVal)
+                                                   , delBucketType = PB.getField delBucketType }
+
+decodeDeleteResponse :: RpbDelResp -> Message
+decodeDeleteResponse RpbDelResp = DeleteResponse
 
 decodeContent :: RpbContent -> Content
 decodeContent RpbContent { value, content_type, charset, content_encoding, vtag, links, last_mod, last_mod_usecs, usermeta, indexes, deleted } =
@@ -197,8 +231,8 @@ encoder PingRequest = (PingRequestCode, Encoder RpbPingReq)
 encoder PingResponse = (PingResponseCode, Encoder RpbPingResp)
 encoder GetRequest {..} = (GetRequestCode, Encoder RpbGetReq { getBucket = PB.putField getBucket
                                                              , getKey = PB.putField getKey
-                                                             , r = PB.putField (fmap fromIntegral r)
-                                                             , pr = PB.putField (fmap fromIntegral pr)
+                                                             , getR = PB.putField (fmap fromIntegral getR)
+                                                             , getPR = PB.putField (fmap fromIntegral getPR)
                                                              , basic_quorom = PB.putField basic_quorom
                                                              , notfound_ok = PB.putField notfound_ok
                                                              , if_modified = PB.putField if_modified
@@ -216,21 +250,35 @@ encoder (PutRequest {..}) = (PutRequestCode, Encoder RpbPutReq { putBucket = PB.
                                                                , putKey = PB.putField putKey
                                                                , putVclock = PB.putField putVclock
                                                                , putContent = PB.putField (encodeContent putContent)
-                                                               , w = PB.putField (fmap fromIntegral w)
-                                                               , dw = PB.putField (fmap fromIntegral dw)
+                                                               , putW = PB.putField (fmap fromIntegral putW)
+                                                               , putDW = PB.putField (fmap fromIntegral putDW)
                                                                , return_body = PB.putField return_body
-                                                               , pw = PB.putField (fmap fromIntegral pw)
+                                                               , putPW = PB.putField (fmap fromIntegral putPW)
                                                                , if_not_modified = PB.putField if_not_modified
                                                                , if_none_match = PB.putField if_none_match
                                                                , return_head = PB.putField return_head
                                                                , putTimeout = PB.putField (fmap fromIntegral putTimeout)
                                                                , asis = PB.putField (fmap fromIntegral asis)
                                                                , putSloppyQuorom = PB.putField putSloppyQuorom
-                                                               , nval = PB.putField (fmap fromIntegral nval)
+                                                               , putNVal = PB.putField (fmap fromIntegral putNVal)
                                                                , putBucketType = PB.putField putBucketType })
 encoder (PutResponse {..}) = (PutResponseCode, Encoder RpbPutResp { putRespContents = PB.putField (fmap encodeContent putRespContents)
                                                                   , putRespVclock = PB.putField putRespVclock
                                                                   , putRespKey = PB.putField putRespKey })
+encoder (DeleteRequest {..}) = (DeleteRequestCode, Encoder RpbDelReq { delBucket = PB.putField delBucket
+                                                                     , delKey = PB.putField delKey
+                                                                     , rw = PB.putField (fmap fromIntegral rw)
+                                                                     , delVclock = PB.putField delVclock
+                                                                     , delR = PB.putField (fmap fromIntegral delR)
+                                                                     , delW = PB.putField (fmap fromIntegral delW)
+                                                                     , delPR = PB.putField (fmap fromIntegral delPR)
+                                                                     , delPW = PB.putField (fmap fromIntegral delPW)
+                                                                     , delDW = PB.putField (fmap fromIntegral delDW)
+                                                                     , delTimeout = PB.putField (fmap fromIntegral delTimeout)
+                                                                     , delSloppyQuorom = PB.putField delSloppyQuorom
+                                                                     , delNVal = PB.putField (fmap fromIntegral delNVal)
+                                                                     , delBucketType = PB.putField delBucketType })
+encoder DeleteResponse = (DeleteResponseCode, Encoder RpbDelResp)
 
 encodeContent :: Content -> RpbContent
 encodeContent Content {value, content_type, charset, content_encoding, vtag, links, last_mod, last_mod_usecs, usermeta, indexes, deleted} = 

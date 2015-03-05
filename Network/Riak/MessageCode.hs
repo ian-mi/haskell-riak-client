@@ -13,6 +13,8 @@ data MessageCode = ErrorResponseCode
                  | GetResponseCode
                  | PutRequestCode
                  | PutResponseCode
+                 | DeleteRequestCode
+                 | DeleteResponseCode
 
 data InvalidMessageCode = InvalidMessageCode Word8 deriving (Typeable, Show)
 instance Exception InvalidMessageCode
@@ -25,6 +27,8 @@ messageCode 9 = GetRequestCode
 messageCode 10 = GetResponseCode
 messageCode 11 = PutRequestCode
 messageCode 12 = PutResponseCode
+messageCode 13 = DeleteRequestCode
+messageCode 14 = DeleteResponseCode
 messageCode code = throw (InvalidMessageCode code)
 
 messageCodeRep :: MessageCode -> Word8
@@ -35,6 +39,8 @@ messageCodeRep GetRequestCode = 9
 messageCodeRep GetResponseCode = 10
 messageCodeRep PutRequestCode = 11
 messageCodeRep PutResponseCode = 12
+messageCodeRep DeleteRequestCode = 13
+messageCodeRep DeleteResponseCode = 14
 
 getMessageCode :: Get MessageCode
 getMessageCode = fmap messageCode getWord8

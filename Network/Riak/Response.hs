@@ -31,6 +31,11 @@ getResponse m = throw (UnexpectedResponse m)
 putResponse :: Message -> (VClock, [(ByteString, Metadata, Maybe UTCTime)])
 putResponse PutResponse {putRespContents, putRespVclock} = (VClock putRespVclock, fmap decodeContent putRespContents)
 
+deleteResponse :: Message -> (VClock, ())
+deleteResponse DeleteResponse = (VClock Nothing, ())
+deleteResponse ErrorResponse {errmsg, errcode} = throw RiakError {errMsg = errmsg, errCode = errcode}
+deleteResponse m = throw (UnexpectedResponse m)
+
 decodeContent :: Content -> (ByteString, Metadata, Maybe UTCTime)
 decodeContent Content { value, content_type, charset, content_encoding, last_mod, last_mod_usecs } = 
   ( value

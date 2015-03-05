@@ -11,8 +11,8 @@ newtype ReturnBody = ReturnBody {returnBody :: Bool}
 getRequest :: BucketType -> Bucket -> Key -> Message
 getRequest bucketType Bucket{..} Key{..} = GetRequest { getBucket = bucket
                                                       , getKey = key
-                                                      , r = Nothing
-                                                      , pr = Nothing
+                                                      , getR = Nothing
+                                                      , getPR = Nothing
                                                       , basic_quorom = Nothing
                                                       , notfound_ok = Nothing
                                                       , if_modified = Nothing
@@ -29,18 +29,34 @@ putRequest ReturnBody{..} VClock{..} bucketType Bucket{..} Key{..} value metadat
              , putKey = Just key
              , putVclock = vclock
              , putContent = encodeContent value metadata
-             , w = Nothing
-             , dw = Nothing
+             , putW = Nothing
+             , putDW = Nothing
              , return_body = Just returnBody
-             , pw = Nothing
+             , putPW = Nothing
              , if_not_modified = Nothing
              , if_none_match = Nothing
              , return_head = Nothing
              , putTimeout = Nothing
              , asis = Nothing
              , putSloppyQuorom = Nothing
-             , nval = Nothing
+             , putNVal = Nothing
              , putBucketType = encodeBucketType bucketType }
+
+deleteRequest :: VClock -> BucketType -> Bucket -> Key -> Message
+deleteRequest VClock{..} bucketType Bucket{..} Key{..} =
+  DeleteRequest { delBucket = bucket
+                , delKey = key
+                , rw = Nothing
+                , delVclock = vclock
+                , delR = Nothing
+                , delW = Nothing
+                , delPR = Nothing
+                , delPW = Nothing
+                , delDW = Nothing
+                , delTimeout = Nothing
+                , delSloppyQuorom = Nothing
+                , delNVal = Nothing
+                , delBucketType = encodeBucketType bucketType }
 
 encodeBucketType :: BucketType -> Maybe ByteString
 encodeBucketType Default = Nothing

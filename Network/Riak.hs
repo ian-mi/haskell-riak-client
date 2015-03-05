@@ -18,3 +18,6 @@ get = KV $ \bucketType bucket key -> const (liftF (getOp bucketType bucket key))
 put :: ByteString -> Metadata -> KV m [(ByteString, Metadata, Maybe UTCTime)]
 put value metadata = KV $ \bucketType bucket key vclock -> 
                             liftF (putOp value metadata bucketType bucket key vclock)
+
+delete :: KV m ()
+delete = KV $ \bucketType bucket key vclock -> liftF (deleteOp bucketType bucket key vclock)
