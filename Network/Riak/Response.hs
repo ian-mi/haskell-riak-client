@@ -1,14 +1,11 @@
-{-# LANGUAGE DeriveDataTypeable, NamedFieldPuns, DisambiguateRecordFields #-}
+{-# LANGUAGE DisambiguateRecordFields, NamedFieldPuns, DeriveDataTypeable #-}
 module Network.Riak.Response where
 
 import Network.Riak.Message
 import Network.Riak.Types
 
-import Control.Monad.Morph
 import Control.Exception
-import Control.Monad.Catch
 import Data.ByteString
-import Data.Conduit
 import Data.Ratio
 import Data.Text
 import Data.Time
@@ -19,27 +16,20 @@ import Data.Word
 data ResponseException = UnexpectedResponse Message
                        | ConnectionClosed
                        | RiakError { errMsg :: Text, errCode :: Int } deriving (Show, Typeable)
+
 instance Exception ResponseException
 
-awaitThrow :: MonadThrow m => Consumer a m a
-awaitThrow = await >>= maybe (throwM ConnectionClosed) return
+pingResponse :: Message -> ()
+pingResponse PingResponse = ()
+pingResponse m = throw (UnexpectedResponse m)
 
-getResponse :: MonadThrow m => (Message -> m a) -> Sink Message m a
-getResponse f = awaitThrow >>= lift . f
+getResponse :: Message -> (VClock, [(ByteString, Metadata, Maybe UTCTime)])
+getResponse GetResponse {getContent, getVclock} = (VClock getVclock, fmap decodeContent getContent)
+getResponse ErrorResponse {errmsg, errcode} = throw (RiakError {errMsg = errmsg, errCode = errcode})
+getResponse m = throw (UnexpectedResponse m)
 
-pingResponse :: MonadThrow m => Message -> m ()
-pingResponse PingResponse = return ()
-pingResponse m = throwM (UnexpectedResponse m)
-
-fetchResponse :: MonadThrow m => Message -> m (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-fetchResponse GetResponse { getContent, getVclock } = return (VClock getVclock, fmap decodeContent getContent)
-fetchResponse ErrorResponse { errmsg, errcode } = throwM (RiakError { errMsg = errmsg, errCode = errcode })
-fetchResponse m = throwM (UnexpectedResponse m)
-
-putResponse :: MonadThrow m => Message -> m (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-putResponse PutResponse { putRespContents, putRespVclock } = return (VClock putRespVclock, fmap decodeContent putRespContents)
-putResponse ErrorResponse { errmsg, errcode } = throwM (RiakError { errMsg = errmsg, errCode = errcode })
-putResponse m = throwM (UnexpectedResponse m)
+putResponse :: Message -> (VClock, [(ByteString, Metadata, Maybe UTCTime)])
+putResponse PutResponse {putRespContents, putRespVclock} = (VClock putRespVclock, fmap decodeContent putRespContents)
 
 decodeContent :: Content -> (ByteString, Metadata, Maybe UTCTime)
 decodeContent Content { value, content_type, charset, content_encoding, last_mod, last_mod_usecs } = 

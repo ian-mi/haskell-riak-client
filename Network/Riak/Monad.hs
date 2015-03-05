@@ -1,30 +1,21 @@
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, NamedFieldPuns #-}
 module Network.Riak.Monad where
 
 import Network.Riak.Connection
 import Network.Riak.Message
+import Network.Riak.Op
 
 import Control.Applicative
 import Control.Concurrent.MVar
 import Control.Monad
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Free.Church
 import Data.Conduit
 
-newtype Riak m a = Riak (Sink Message m () -> ResumableSource m Message -> m (ResumableSource m Message, a))
+newtype Riak m a = Riak (FT Op m a) deriving (Functor, Applicative, Monad, MonadTrans, MonadFree Op)
 
--- can relax context to Functor in GHC 7.10
-instance Monad m => Functor (Riak m) where
-         fmap f (Riak m) = Riak (fmap (fmap (liftM (fmap f))) m)
-
-instance Monad m => Applicative (Riak m) where
-         pure = Riak . const . (return .) . flip (,)
-         (<*>) = ap
-
--- can remove the definition of return in GHC 7.10
-instance Monad m => Monad (Riak m) where
-         return = pure
-         Riak m >>= f = Riak $ \snk src -> do (src', a) <- m snk src
-                                              let Riak n = f a
-                                              n snk src'
+riakConduit :: Monad m => Riak m a -> ConduitM Message Message m a
+riakConduit (Riak m) = iterTM join (transFT opConduit m)
 
 runRiak :: Connection -> Riak IO a -> IO a
-runRiak Connection {up, down} (Riak m) = modifyMVar down (m up)
+runRiak Connection {up, down} m = modifyMVar down ($$++ fuseUpstream (riakConduit m) up)
