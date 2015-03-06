@@ -19,16 +19,6 @@ data Op a = Op Message (F ((->) Message) a) deriving Functor
 pingOp :: Op ()
 pingOp = Op PingRequest (liftF pingResponse)
 
-getOp :: BucketType -> Bucket -> Key -> Op (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-getOp bucketType bucket key = Op (getRequest bucketType bucket key) (liftF getResponse)
-
-putOp :: ByteString -> Metadata -> BucketType -> Bucket -> Key -> VClock -> Op (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-putOp value metadata bucketType bucket key vclock =
-  Op (putRequest (ReturnBody True) vclock bucketType bucket key value metadata) (liftF putResponse)
-
-deleteOp :: BucketType -> Bucket -> Key -> VClock -> Op (VClock, ())
-deleteOp bucketType bucket key vclock = Op (deleteRequest vclock bucketType bucket key) (liftF deleteResponse)
-
 opConduit :: Monad m => Op a -> ConduitM Message Message m a
 opConduit (Op req rsp) = yield req >> retract (hoistF (awaitThrow ConnectionClosed) rsp)
 

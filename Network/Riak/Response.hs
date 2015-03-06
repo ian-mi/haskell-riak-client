@@ -23,16 +23,16 @@ pingResponse :: Message -> ()
 pingResponse PingResponse = ()
 pingResponse m = throw (UnexpectedResponse m)
 
-getResponse :: Message -> (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-getResponse GetResponse {getContent, getVclock} = (VClock getVclock, fmap decodeContent getContent)
+getResponse :: Message -> ([(ByteString, Metadata, Maybe UTCTime)], VClock)
+getResponse GetResponse {getContent, getVclock} = (fmap decodeContent getContent, VClock getVclock)
 getResponse ErrorResponse {errmsg, errcode} = throw (RiakError {errMsg = errmsg, errCode = errcode})
 getResponse m = throw (UnexpectedResponse m)
 
-putResponse :: Message -> (VClock, [(ByteString, Metadata, Maybe UTCTime)])
-putResponse PutResponse {putRespContents, putRespVclock} = (VClock putRespVclock, fmap decodeContent putRespContents)
+putResponse :: Message -> ([(ByteString, Metadata, Maybe UTCTime)], VClock)
+putResponse PutResponse {putRespContents, putRespVclock} = (fmap decodeContent putRespContents, VClock putRespVclock)
 
-deleteResponse :: Message -> (VClock, ())
-deleteResponse DeleteResponse = (VClock Nothing, ())
+deleteResponse :: Message -> ((), VClock)
+deleteResponse DeleteResponse = ((), VClock Nothing)
 deleteResponse ErrorResponse {errmsg, errcode} = throw RiakError {errMsg = errmsg, errCode = errcode}
 deleteResponse m = throw (UnexpectedResponse m)
 

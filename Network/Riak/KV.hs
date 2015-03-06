@@ -1,24 +1,50 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving, FlexibleInstances, MultiParamTypeClasses, RankNTypes #-}
 module Network.Riak.KV where
 
 import Network.Riak.Monad
+import Network.Riak.Op
 import Network.Riak.Types
+import Network.Riak.Request
+import Network.Riak.Response
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Free.Class
+import Control.Monad.Trans.Class
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State.Strict
+import Data.ByteString
+import Data.Time
 
-newtype KV m a = KV { unKV :: BucketType -> Bucket -> Key -> VClock -> Riak m (VClock, a) }
+newtype KV m a = KV { unKV :: KVT (Riak m) a } deriving (Functor, Applicative, Monad)
 
-instance Monad m => Functor (KV m) where
-         fmap f = KV . fmap (fmap (fmap (fmap (fmap (fmap f))))) . unKV
-         
-instance Monad m => Applicative (KV m) where
-         pure = KV . const . const . const . fmap pure . flip (,)
-         (<*>) = ap
+newtype KVT m a = KVT { runKVT :: ReaderT KVOpts (StateT VClock m) a } deriving (Functor, Applicative, Monad)
 
-instance Monad m => Monad (KV m) where
-         return = pure
-         m >>= f = KV $ \bucketType bucket key vclock -> do (vclock', a) <- unKV m bucketType bucket key vclock
-                                                            unKV (f a) bucketType bucket key vclock'
+instance MonadTrans KV where
+         lift = KV . lift . lift
 
-runKV :: Monad m => BucketType -> Bucket -> Key -> KV m a -> Riak m a
-runKV bucketType bucket key (KV m) = fmap snd (m bucketType bucket key (VClock Nothing))
+instance MonadTrans KVT where
+         lift = KVT . lift . lift
+
+instance Monad m => MonadFree (KVT Op) (KV m) where
+         wrap = join . KV . mapKVT liftF
+
+runKV :: Monad m => BucketType -> ByteString -> ByteString -> KV m a -> Riak m a
+runKV bucketType bucket key (KV (KVT m)) = fmap fst (runStateT (runReaderT m env) (VClock Nothing))
+  where env = KVOpts bucketType bucket key
+
+makeKVT :: (KVOpts -> VClock -> m (a, VClock)) -> KVT m a
+makeKVT = KVT . ReaderT . fmap StateT
+
+mapKVT :: (forall a. m a -> n a) -> KVT m b -> KVT n b
+mapKVT f = KVT . mapReaderT (mapStateT f) . runKVT
+
+getOp :: KVT Op ([(ByteString, Metadata, Maybe UTCTime)])
+getOp = makeKVT $ \opts -> const (Op (getRequest opts) (liftF getResponse))
+
+putOp :: ByteString -> Metadata -> KVT Op [(ByteString, Metadata, Maybe UTCTime)]
+putOp value metadata = makeKVT $ \opts vclock -> Op (putRequest value metadata (ReturnBody True) opts vclock)
+                                                    (liftF putResponse)
+
+deleteOp :: KVT Op ()
+deleteOp = makeKVT $ \opts vclock -> Op (deleteRequest opts vclock) (liftF deleteResponse)

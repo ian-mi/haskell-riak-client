@@ -9,15 +9,14 @@ import Control.Monad.Free
 import Data.ByteString
 import Data.Time
 
-ping :: Riak m ()
+ping :: Monad m => Riak m ()
 ping = liftF pingOp
 
-get :: KV m [(ByteString, Metadata, Maybe UTCTime)]
-get = KV $ \bucketType bucket key -> const (liftF (getOp bucketType bucket key))
+get :: Monad m => KV m [(ByteString, Metadata, Maybe UTCTime)]
+get = liftF getOp
 
-put :: ByteString -> Metadata -> KV m [(ByteString, Metadata, Maybe UTCTime)]
-put value metadata = KV $ \bucketType bucket key vclock -> 
-                            liftF (putOp value metadata bucketType bucket key vclock)
+put :: Monad m => ByteString -> Metadata -> KV m [(ByteString, Metadata, Maybe UTCTime)]
+put value metadata = liftF (putOp value metadata)
 
-delete :: KV m ()
-delete = KV $ \bucketType bucket key vclock -> liftF (deleteOp bucketType bucket key vclock)
+delete :: Monad m => KV m ()
+delete = liftF deleteOp

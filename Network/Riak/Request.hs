@@ -8,23 +8,24 @@ import Data.ByteString
 
 newtype ReturnBody = ReturnBody {returnBody :: Bool}
 
-getRequest :: BucketType -> Bucket -> Key -> Message
-getRequest bucketType Bucket{..} Key{..} = GetRequest { getBucket = bucket
-                                                      , getKey = key
-                                                      , getR = Nothing
-                                                      , getPR = Nothing
-                                                      , basic_quorom = Nothing
-                                                      , notfound_ok = Nothing
-                                                      , if_modified = Nothing
-                                                      , getHead = Nothing
-                                                      , deleted_vclock = Nothing
-                                                      , getTimeout = Nothing
-                                                      , getSloppyQuorom = Nothing
-                                                      , n_val = Nothing
-                                                      , getBucketType = encodeBucketType bucketType }
+getRequest :: KVOpts -> Message
+getRequest KVOpts {..} = 
+  GetRequest { getBucket = bucket
+             , getKey = key
+             , getR = Nothing
+             , getPR = Nothing
+             , basic_quorom = Nothing
+             , notfound_ok = Nothing
+             , if_modified = Nothing
+             , getHead = Nothing
+             , deleted_vclock = Nothing
+             , getTimeout = Nothing
+             , getSloppyQuorom = Nothing
+             , n_val = Nothing
+             , getBucketType = Nothing }
 
-putRequest :: ReturnBody -> VClock -> BucketType -> Bucket -> Key -> ByteString -> Metadata -> Message
-putRequest ReturnBody{..} VClock{..} bucketType Bucket{..} Key{..} value metadata =
+putRequest :: ByteString -> Metadata -> ReturnBody -> KVOpts -> VClock -> Message
+putRequest value metadata ReturnBody{..} KVOpts{..} VClock{..} =
   PutRequest { putBucket = bucket
              , putKey = Just key
              , putVclock = vclock
@@ -42,8 +43,8 @@ putRequest ReturnBody{..} VClock{..} bucketType Bucket{..} Key{..} value metadat
              , putNVal = Nothing
              , putBucketType = encodeBucketType bucketType }
 
-deleteRequest :: VClock -> BucketType -> Bucket -> Key -> Message
-deleteRequest VClock{..} bucketType Bucket{..} Key{..} =
+deleteRequest :: KVOpts -> VClock -> Message
+deleteRequest KVOpts{..} VClock{..} =
   DeleteRequest { delBucket = bucket
                 , delKey = key
                 , rw = Nothing
